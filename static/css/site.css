@@ -1,0 +1,13 @@
+#site-status {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  z-index: 20000; max-width: min(640px, calc(100vw - 48px));
+  padding: 12px 18px; border-radius: 6px; background: #173e54; color: #fff;
+  font: 14px/1.6 system-ui, sans-serif; box-shadow: 0 2px 12px #0003;
+}
+#site-status[hidden] { display: none; }
+#site-status.site-status-error { background: #8c2525; }
+.site-home-link {
+  position: fixed; right: 16px; bottom: 16px; z-index: 10000;
+  padding: 8px 12px; border-radius: 5px; background: #fff; color: #153e54;
+  font: 14px system-ui, sans-serif; text-decoration: none; box-shadow: 0 1px 6px #0004;
+}

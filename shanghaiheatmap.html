@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-map-page="true">
+<head>
+  <script src="./static/js/site.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上海多频段动态热力图 | XLAB</title>
+  <link rel="stylesheet" href="./static/css/site.css">
+  <script src="https://map.qq.com/api/gljs?v=1.exp&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&libraries=visualization"></script>
+  <style>
+    html, body, #container { height: 100%; margin: 0; }
+    .controls {
+      position: absolute; top: 20px; left: 20px; z-index: 1001;
+      padding: 12px; border-radius: 6px; background: #fffffff0;
+      font: 14px/1.8 system-ui, sans-serif; box-shadow: 0 1px 6px #0003;
+    }
+    .controls button { margin-right: 8px; padding: 6px 10px; cursor: pointer; }
+    .controls p { margin: 8px 0 0; }
+  </style>
+  <link rel="icon" href="./static/mainpage/xlab.webp" type="image/webp">
+</head>
+<body>
+  <div id="container"></div>
+  <div class="controls">
+    <button id="frequenceDec" type="button" disabled>减小频率</button>
+    <button id="frequenceAdd" type="button" disabled>增加频率</button>
+    <p id="myfre" aria-live="polite">正在加载频段数据…</p>
+  </div>
+  <a class="site-home-link" href="./communication.html">返回智能通信</a>
+  <script>
+    async function initMap() {
+      try {
+        XLab.showStatus("正在加载频段数据…");
+        const rows = await XLab.loadJSON("./data/sigsmutils.json");
+        if (!rows.length) throw new Error("频段数据为空");
+        const framesByTime = new Map();
+        rows.forEach(row => {
+          if (!framesByTime.has(row.Time)) framesByTime.set(row.Time, []);
+          framesByTime.get(row.Time).push(row);
+        });
+        const frames = Array.from(framesByTime.entries())
+          .sort(([a], [b]) => Number(a) - Number(b)).map(([, frame]) => frame);
+        const map = new TMap.Map("container", {
+          zoom: 11.7,
+          center: new TMap.LatLng(31.909897147274364, 121.39756310116866),
+          mapStyleId: "style0",
+          baseMap: { type: "vector", features: ["base", "building2d", "point"] }
+        });
+        const heat = new TMap.visualization.Heat({
+          max: 50, min: 0, height: 20, radius: 30,
+          transitAnimation: { duration: 3000 }, enableLighting: true
+        }).addTo(map);
+        let frequency = 20;
+        let frameIndex = 0;
+        const increase = document.getElementById("frequenceAdd");
+        const decrease = document.getElementById("frequenceDec");
+        const label = document.getElementById("myfre");
+        function renderFrame() {
+          const field = "F" + frequency;
+          heat.setData(frames[frameIndex].map(row => ({
+            lat: Number(row.Lat), lng: Number(row.Lng), count: Number(row[field])
+          })));
+          label.textContent = `当前频率：${(frequency / 10).toFixed(1)} GHz`;
+          increase.disabled = frequency >= 40;
+          decrease.disabled = frequency <= 20;
+        }
+        function changeFrequency(delta) {
+          frequency = Math.max(20, Math.min(40, frequency + delta));
+          frameIndex = 0;
+          renderFrame();
+        }
+        increase.addEventListener("click", () => changeFrequency(1));
+        decrease.addEventListener("click", () => changeFrequency(-1));
+        renderFrame();
+        XLab.clearStatus();
+        if (frames.length > 1) {
+          const timer = window.setInterval(() => {
+            frameIndex = (frameIndex + 1) % frames.length;
+            renderFrame();
+          }, 3500);
+          window.addEventListener("pagehide", () => window.clearInterval(timer), { once: true });
+        }
+      } catch (error) { XLab.reportError(error); }
+    }
+    document.addEventListener("DOMContentLoaded", initMap);
+  </script>
+</body>
+</html>

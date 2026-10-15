@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html data-map-page="true" lang="zh-CN">
+
+<head>
+  <script src="./static/js/site.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>SJTU 信号热力图 | XLAB</title>
+
+
+  <link rel="stylesheet" href="./static/css/site.css">
+  <link rel="icon" href="./static/mainpage/xlab.webp" type="image/webp">
+</head>
+<script charset="utf-8"
+    src="https://map.qq.com/api/gljs?v=1.exp&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&libraries=visualization"></script>
+<style type="text/css">
+    html,
+    body {
+        height: 100%;
+        margin: 0px;
+        padding: 0px;
+    }
+
+    #container {
+        width: 100%;
+        height: 100%;
+    }
+
+</style>
+
+<body>
+
+    <div id="container"></div>
+
+    <script>
+        async function initMap() {
+          try {
+            XLab.showStatus("正在加载信号数据…");
+            const rows = await XLab.loadJSON("./data/sigs.json");
+            const heatpoint = rows.map(row => ({
+              lng: Number(row.Lng), lat: Number(row.Lat), count: Number(row.Amp) + 100
+            }));
+            var center = new TMap.LatLng(31.02904283, 121.42900285);
+
+            //初始化地图
+            var map = new TMap.Map("container", {
+                zoom: 15.7,//设置地图缩放级别
+                center: center,//设置地图中心点坐标
+                mapStyleId: "style0" ,//个性化样式
+                baseMap: {
+            		type: "vector",
+            		features: ["base", "building3d","point"], // 隐藏矢量文字
+          		},
+            });
+            //初始化热力图并添加至map图层
+            var heat = new TMap.visualization.Heat({
+                max: 60, // 热力最强阈值
+                min: 0, // 热力最弱阈值        //47行加了100，所以这里实际频谱阈值是-100到-40，这里不要(把max=-20，min=-80，47行不加80），显示会出问题，我也不清楚为啥，可以自己在数据库里设置两个数试试
+                height: 10, // 峰值高度
+                gradientColor: { // 渐变颜色
+                    0.5: "#673198",
+                    0.8: "#e53390",
+                    0.9: "#ffc95a",
+                },
+                radius: 30 // 最大辐射半径
+
+            }).addTo(map);
+          
+            heat.setData(heatpoint);
+            XLab.clearStatus();
+          } catch (error) {
+            XLab.reportError(error);
+          }
+        }
+        document.addEventListener("DOMContentLoaded", initMap);
+    </script>
+    <a class="site-home-link" href="./communication.html">返回智能通信</a>
+</body>
+
+</html>

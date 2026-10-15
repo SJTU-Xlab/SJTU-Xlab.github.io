@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html data-map-page="true" lang="zh-CN">
+<head>
+  <script src="./static/js/site.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>多频段信号可视化 | XLAB</title>
+  <link rel="stylesheet" href="./static/css/site.css">
+  <link rel="icon" href="./static/mainpage/xlab.webp" type="image/webp">
+</head>
+<script
+        charset="utf-8"
+        src="https://map.qq.com/api/gljs?libraries=tools&v=1.exp&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77"
+></script>
+
+<style type="text/css">
+    html,
+    body {
+        height: 100%;
+        margin: 5px;
+        padding: 5px;
+    }
+
+    #container {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+<body>
+<div id="form1">频段：</div>
+<script>
+    var myForm1=document.getElementById("form1");
+    for(var i=1;i<=5;i++)
+    {
+        current_id="fre"+String(i);
+        var select_table=document.createElement("select");
+        select_table.id=current_id;
+        var current_option=new Option("空",-1);
+        select_table.appendChild(current_option);
+        for(var j=0;j<=20;j++)
+        {
+            var current_fre=(20+j)/10;
+            var display_fre=String(current_fre)+"GHz";
+            current_option=new Option(display_fre,j);
+            select_table.appendChild(current_option);
+        }
+        myForm1.appendChild(select_table);
+    }
+</script>
+<button type="button" id="myButton" disabled>应用频段</button>
+
+
+
+<div id="container"></div>
+
+<script>
+    function normalRandom(mean, std) {
+        let u = 0.0, v = 0.0, w = 0.0, c = 0.0;
+        do {
+            //获得两个（-1,1）的独立随机变量
+            u = Math.random() * 2 - 1.0;
+            v = Math.random() * 2 - 1.0;
+            w = u * u + v * v;
+        } while (w == 0.0 || w >= 1.0)
+        //Box-Muller转换
+        c = Math.sqrt((-2 * Math.log(w)) / w);
+        let normal = mean + (u * c) * std;
+        return normal;
+    }
+</script>
+
+<script>
+if (window.TMap) {
+
+    colorlist=[
+        "#FFFF00",
+        "#fde725",
+        "#d0e11c",
+        "#a0da39",
+        "#73d056",
+        "#4ac16d",
+        "#2db27d",
+        "#1fa187",
+        "#21918c",
+    ]
+    const ellipse_height=10;
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var mapContainer = document.getElementById('container');
+    // 自定义SVG图层 - 继承DOMOverlay
+    function SvgMarker(options) {
+        TMap.DOMOverlay.call(this, options);
+    }
+
+    SvgMarker.prototype = new TMap.DOMOverlay();
+
+    // 初始化
+    SvgMarker.prototype.onInit = function (options) {
+        this.options = options.options;
+        this.map = options.map;
+    };
+
+    // 销毁时需解绑事件监听
+    SvgMarker.prototype.onDestroy = function () {
+        if (this.onClick) {
+            this.dom.removeEventListener(this.onClick);
+        }
+    };
+
+    // 创建DOM元素，返回一个DOMElement，使用this.dom可以获取到这个元素
+    SvgMarker.prototype.createDOM = function () {
+        var svg = document.createElementNS(SVG_NS, 'svg');
+        svg.id = 'svgDom';
+        svg.setAttribute('width', mapContainer.offsetWidth);
+        svg.setAttribute('height', mapContainer.offsetHeight);
+        svg.style.cssText = 'position:absolute;top:0px;left:0px;';
+        var group = []; // 定义g元素数组
+        var circleShape = []; // 定义circle元素数组
+        const stops = [
+            {
+                opacity:'0.8',
+                offset: "0%"
+            },
+            {
+                opacity: '0.2',
+                offset: "10%"
+            },
+
+            {
+                opacity: '0',
+                offset: "100%"
+            }
+        ];
+
+        for (var i = 0; i < this.options.length*5; i++) {
+            var pt_index=Math.floor(i/5);
+            var fre_index=i%5;
+            var createCenter = this.map.projectToContainer(this.options[pt_index].position);
+            var defs = document.createElementNS(SVG_NS, 'defs');
+            var gradient = document.createElementNS(SVG_NS, 'radialGradient');
+
+            pitch=this.map.getPitch();
+            pitch=pitch/180*Math.PI;
+
+            display_height=fre_index;
+            display_height=(display_height>4)? 4:display_height
+            display_height*=40;
+            createCenter.y-=display_height*Math.sin(pitch);
+            group[i] = document.createElementNS(SVG_NS, 'g');
+            circleShape[i] = document.createElementNS(SVG_NS, 'ellipse');
+            var power=this.options[pt_index].power[fre_index];
+            power=(power>=0)? power:0;
+            display_rx=power*50;
+            display_ry=display_rx*((Math.cos(pitch))**2)+ellipse_height*((Math.sin(pitch))**2);
+            //set gradient
+            var color_indicator=0;
+            if (power<0.1)color_indicator=3;
+            else if (power <0.2)color_indicator=2;
+            else if (power <0.4) color_indicator=1;
+            else color_indicator=0;
+
+            var index=color_indicator*2;
+            stops.forEach(stop => {
+                var el = document.createElementNS(SVG_NS, 'stop');
+                el.setAttribute('offset', stop.offset);
+                el.setAttribute('stop-color',colorlist[index]);
+                el.setAttribute('stop-opacity', stop.opacity);
+                gradient.appendChild(el);
+                index++;
+            });
+
+            gradient.id = 'Gradient'+String(i);
+            defs.appendChild(gradient);
+            circleShape[i].setAttribute('fill', 'url(#'+gradient.id+')');
+            circleShape[i].setAttribute('cx', createCenter.x);
+            circleShape[i].setAttribute('cy', createCenter.y);
+            circleShape[i].setAttribute('rx', display_rx);
+            circleShape[i].setAttribute('ry', display_ry);
+            group[i].appendChild(defs);
+            group[i].appendChild(circleShape[i]);
+
+            svg.appendChild(group[i]);
+
+            this.onMouseEnter = function(e) {
+                this.emit('mouseenter', e.target.firstChild);
+            }.bind(this);
+            this.onMouseLeave = function(e)  {
+                this.emit('mouseleave', e.target.firstChild);
+            }.bind(this);
+            group[i].addEventListener('mouseenter', this.onMouseEnter);
+            group[i].addEventListener('mouseleave', this.onMouseLeave);
+        }
+        return svg;
+    };
+    // 更新DOM元素，在地图移动/缩放后执行
+    SvgMarker.prototype.updateDOM = function () {
+        if (!this.map) {
+            return;
+        }
+        mapZoom=this.map.getZoom();
+        pitch=this.map.getPitch();
+        pitch=pitch/180*Math.PI;
+        scaling_factor=Math.pow(1.15,mapZoom-12);
+        //scaling_factor=mapZoom/12;
+
+
+        // 经纬度坐标转容器像素坐标
+        for (var j = 0; j < this.options.length*5; j++) {
+            var pt_index=Math.floor(j/5);
+            var fre_index=j%5;
+            var pixel = this.map.projectToContainer(this.options[pt_index].position);
+
+            display_height=fre_index;
+            display_height=(display_height>4)? 4:display_height
+            display_height*=40;
+            display_height*=scaling_factor;
+            pixel-=display_height*Math.sin(pitch);
+            var updateCenter = this.map.projectToContainer(this.options[pt_index].position);
+            updateCenter.y-=display_height*Math.sin(pitch);
+
+            var power=this.options[pt_index].power[fre_index];
+            power=(power>=0)? power:0;
+            display_rx=power*50*scaling_factor;
+            display_ry=display_rx*Math.cos(pitch)+ellipse_height*scaling_factor*Math.sin(pitch);
+
+
+            this.dom.children[j]
+                .getElementsByTagName('ellipse')[0]
+                .setAttribute('cx', updateCenter.x);
+            this.dom.children[j]
+                .getElementsByTagName('ellipse')[0]
+                .setAttribute('cy', updateCenter.y);
+            this.dom.children[j]
+                .getElementsByTagName('ellipse')[0]
+                .setAttribute('rx', display_rx);
+            this.dom.children[j]
+                .getElementsByTagName('ellipse')[0]
+                .setAttribute('ry', display_ry);
+        }
+    };
+
+    SvgMarker.remove=function(){
+        while(this.hasChildNodes())
+        {
+            this.removeChild(this.lastChild);
+        }
+    }
+    window.SvgMarker = SvgMarker;
+
+}
+</script>
+
+<script type="text/javascript">
+    async function initMap() {
+      try {
+        XLab.showStatus("正在加载信号数据…");
+        // 初始化地图
+        var map = new TMap.Map('container', {
+            zoom: 12, // 设置地图缩放级别
+            center: new TMap.LatLng(31.02904283, 121.42900285), // 设置地图中心点坐标
+            mapStyleId: "style1" ,//个性化样式
+            baseMap: {
+                type: "vector",
+                features: ["base", "building3d","point"], // 隐藏矢量文字
+            },
+        });
+        // 初始化自定义marker类
+        var data_list=[];
+        option_list=[];
+		
+
+		
+        const rows = await XLab.loadJSON("./data/sigs.json");
+        data_list = rows.map(row => ({
+            position: new TMap.LatLng(Number(row.Lat), Number(row.Lng)),
+            // The original endpoint supplies one Amp value, repeated for all bands.
+            power: Array(21).fill(Math.max(0, (Number(row.Amp) + 95) / 40))
+        }));
+        XLab.clearStatus();
+
+        var marker = new SvgMarker({
+            map,
+            options: option_list
+        });
+
+        //map.res
+        // 监听地图容器变化，动态修改svg图层大小，防止更新时元素移出svg图区
+        map.on('resize', function() {
+            const svg = document.getElementById('svgDom');
+            if (svg) {
+                svg.setAttribute('width', mapContainer.offsetWidth);
+                svg.setAttribute('height', mapContainer.offsetHeight);
+            }
+        })
+        var myButton=document.getElementById("myButton");
+        myButton.disabled = false;
+        myButton.onclick=function()
+        {
+            marker.destroy();
+            initFre=[];
+
+            option_list=[];
+            for(var i=1;i<=5;i++)
+            {
+                fre_id="fre"+String(i);
+                initFre.push(parseInt(document.getElementById(fre_id).value));
+            }
+
+            for(var i=0;i<data_list.length;i++)
+            {
+                bd_power=[0,0,0,0,0];
+                for(var j=0;j<5;j++)
+                {
+                    if (initFre[j]<0)continue;
+                    else bd_power[j]=data_list[i].power[initFre[j]];
+                }
+
+                current_point={
+                    position: data_list[i].position,
+                    power: bd_power
+                };
+                option_list.push(current_point);
+            }
+
+            marker = new SvgMarker({
+                map,
+                options: option_list
+            });
+
+        }
+      } catch (error) {
+        XLab.reportError(error);
+      }
+    }
+    document.addEventListener("DOMContentLoaded", initMap);
+</script>
+
+
+<script>
+
+</script>
+<a class="site-home-link" href="./communication.html">返回智能通信</a>
+</body>
+</html>
