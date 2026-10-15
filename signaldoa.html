@@ -1,0 +1,237 @@
+﻿<!DOCTYPE html>
+<html data-map-page="true" lang="zh-CN">
+<head>
+  <script src="./static/js/site.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>信号测向可视化</title>
+    <script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&libraries=geometry,model,visualization"></script>
+    
+    
+  <link rel="stylesheet" href="./static/css/site.css">
+  <link rel="icon" href="./static/mainpage/xlab.webp" type="image/webp">
+</head>
+
+<style type="text/css">
+    html,
+    body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    #container {
+        width: 100%;
+        height: 100%;
+    }
+
+    .btnContainer {
+        position: absolute;
+        left: 20px;
+        top: 20px;
+        z-index: 10000;
+    }
+
+        .btnContainer button {
+            padding: 10px 14px;
+            box-sizing: border-box;
+            border: none;
+            background-color: #3876ff;
+            border-radius: 2px;
+            color: #fff;
+            font-size: 14px;
+            line-height: 14px;
+            margin-bottom: 10px;
+        }
+</style>
+<body>
+    <div class="btnContainer">
+
+        <button class="btn3">marker删除</button>
+        <button onclick="mydir()">使用指南</button>
+    </div>
+    <div id="container"></div>
+    <script type="text/javascript">
+      if (window.TMap) {
+        var center = new TMap.LatLng(39.98210863924864, 116.31310899739151);
+        var centerHeight = new TMap.LatLng(39.98210863924864, 116.31305899639151, 134);
+        var pos_sinal = new TMap.LatLng(39.98210863924864, 116.31310899739151, 134);
+
+        // 初始化地图
+        var map = new TMap.Map('container', {
+            zoom: 17, // 设置地图缩放
+            center: new TMap.LatLng(39.98210863924864, 116.31310899739151), // 设置地图中心点坐标，
+            pitch: 60, // 俯仰度
+            rotation: 0, // 旋转角度
+            baseMap: {			//底图设置（参数为：VectorBaseMap对象）
+                type: 'vector',	//类型：失量底图
+                features: ['base', 'building3d']
+            }
+        });
+
+        // MultiMarker文档地址：https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
+        //定义信号标记点图层
+        var marker_sig = new TMap.MultiMarker({
+            map: map,
+            styles: {
+                // 点标记样式
+                signal: new TMap.MarkerStyle({
+                    width: 20, // 样式宽
+                    height: 30, // 样式高
+                    src: './static/communicationpage/signal2.png',
+
+                    //anchor: { x: 10, y: 30 }, // 描点位置
+                }),
+            },
+            geometries: [
+                // 点标记数据数组
+                {
+                    // 标记位置(纬度，经度，高度)
+                    position: pos_sinal,
+                    id: 'sig1',
+                    styleId: 'signal',
+                    properties: { "title": "sig1" },
+                }
+            ],
+        });
+        //定义探测器标记点图层
+        var marker_dec = new TMap.MultiMarker({
+            map: map,
+            styles: {
+
+                dec: new TMap.MarkerStyle({
+                    width: 20, // 样式宽
+                    height: 30, // 样式高
+                    anchor: { x: 10, y: 30 }, // 描点位置
+                }),
+            },
+            geometries: [
+                // 点标记数据数组
+
+            ],
+        });
+
+        var pipeline = new TMap.visualization.Pipe({
+            pickStyle: function (item) {
+                // 管道图样式映射函数
+                if (item.styleId === 'zhenshi') {
+                    return {
+                        color: '#a8d4f8',
+                    };
+                } else if (item.styleId === 'yuce') {
+                    return {
+                        color: '#df5d25',
+                    };
+                }
+            },
+        });
+
+
+        var num_dec = 0;
+        var list = [];//储存线
+
+        //监听点击事件，在探测器图层marker_dec上添加标记
+        map.on("click", (evt) => {
+            var tz = tezheng();//获取特征
+            //将特征值传输到后台
+            //将位置坐标传输到后台
+            //进行计算，并将结果返回
+            var tance = evt.latLng;//探测器位置
+            tance.height = tz.tall;
+            
+            marker_dec.add({
+                styleId: 'dec',
+                position: tance
+
+            });
+
+
+            num_dec = marker_dec.geometries.length;//共有多少个阵元
+            //计算方位角
+            var fangwei = TMap.geometry.computeHeading(marker_dec.geometries[num_dec - 1].position, center);
+            //计算仰角
+            var path = [marker_dec.geometries[num_dec - 1].position, center];
+            var distance = TMap.geometry.computeDistance(path);
+            var gao = pos_sinal.height - tance.height;
+            var yangjiao =
+                90 - Math.atan(gao / distance) / Math.PI * 180;
+
+
+            var zhong = TMap.geometry.computeDestination(marker_dec.geometries[num_dec - 1].position, Number(fangwei), distance);//终点坐标
+
+
+            var zhonghei = Math.tan((90 - yangjiao) * Math.PI / 180) * distance;
+            zhong.height=zhonghei+Number(tance.height);
+            
+
+
+            var line1 = {
+                path: [
+                    // 管道线经纬度点串
+                    marker_dec.geometries[num_dec - 1].position,
+                    pos_sinal,],
+                radius: 1,
+                styleId: 'zhenshi',
+            };
+
+            list.push(line1);
+
+
+            pipeline.setData(list);
+            pipeline.addTo(map); // 添加至指定地图实例
+
+        }
+        );
+    
+
+        document.querySelector('button.btn3').onclick = function () {
+            const geometries = marker_dec.geometries;
+            if (!geometries.length) return;
+            marker_dec.remove(geometries[geometries.length - 1].id);
+            num_dec = marker_dec.geometries.length;
+            list.pop();
+            pipeline.setData(list);
+        };
+
+      }
+    </script>
+    
+    <script language="javascript">
+       function mydir() {
+         window.open('./doausage.html', '_blank', 'noopener,noreferrer');
+       }
+    </script>
+ 
+    <script>
+        //该函数获取该点的全部特征
+        function tezheng() {
+            var tz = {};
+            var Tall = prompt("请输入探测器位置高度（信号高度134m，请不要让探测器高度超过200m）");
+            if (Tall > 200) { Tall = 200 }
+            if (Tall < 0) { Tall = 0}
+
+            var CON = prompt("请输入要使用的阵列结构（L阵：1；面阵：2；圆阵：3）");
+            if (CON == "3") {
+                var N = prompt("请输入阵元个数");
+                var Nx = 0;
+                var Ny = 0;
+            }
+            else {
+                var N = 0;
+                var Nx = prompt("请输入Nx");
+                var Ny = prompt("请输入Ny");
+            }
+            tz.tall = Tall;//探测器位置
+            tz.con = CON;//阵元类型
+            tz.Nx = Nx; //L，P阵元的x
+            tz.Ny = Ny; //L,P阵元的Y
+            tz.N = N;  //圆阵的N
+            return tz;
+
+        }
+    </script>
+    
+<a class="site-home-link" href="./communication.html">返回智能通信</a>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN"  class="mdui-theme-dark">
+<head>
+  <script src="./static/js/site.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no"/>
+  <meta name="renderer" content="webkit"/>
+
+  <link rel="stylesheet" href="./static/mdui/mdui@2_mdui.css">
+  <script src="./static/mdui/mdui@2_mdui.global.js"></script>
+
+
+
+  <!--icon库-->
+  <link href="./static/mdui/Material_Icons_Outlined.css" rel="stylesheet">
+  <link href="./static/mdui/Material_Icons.css" rel="stylesheet">
+
+
+
+  <title>XLab!</title>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden; /* 禁止页面滚动 */
+    }
+    .top-app-bar{
+      box-sizing: content-box;
+    }
+    .container-layout-main{
+      height:100vh; /* 60px 是顶部导航栏的高度，调整为实际高度 */
+      overflow-y: auto; /* 允许内容滚动 */
+
+    }
+
+    .bt{
+      margin-right: 5px;
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+
+  </style>
+
+  <link rel="stylesheet" href="./static/css/site.css">
+  <link rel="icon" href="./static/mainpage/xlab.webp" type="image/webp">
+</head>
+<body>
+
+
+
+<!------------------------- 主框架 ----------------------------------------------->
+<mdui-layout style="position: relative;overflow: hidden">
+  <!------------------------顶部应用栏 ------------------>
+  <mdui-top-app-bar class="top-app-bar" scroll-behavior="elevate"
+                    scroll-target="#container">
+    <a href="./index.html" style="display: contents;">
+      <mdui-avatar style="overflow: visible;margin: auto;" src="./static/mainpage/xlab.webp" ></mdui-avatar>
+    </a>
+
+    <mdui-top-app-bar-title style="font-size: xx-large;margin: auto;margin-left: 5px;">
+      XLAB: A rising star from SJTU
+    </mdui-top-app-bar-title>
+
+    <mdui-button class="bt" href="./drone.html">
+      无人机
+      <mdui-icon slot="icon" name=airplanemode_active--outlined></mdui-icon>
+      <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+    </mdui-button>
+
+    <mdui-button class="bt" href="./communication.html">
+      智能通信
+      <mdui-icon slot="icon" name=signal_cellular_alt--outlined></mdui-icon>
+      <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+    </mdui-button>
+  </mdui-top-app-bar>
+
+
+  <!------------------------主页内容 ------------------>
+  <mdui-layout-main class="container-layout-main" id="container" style="display: flex; flex-direction: column;">
+    <div style="flex: 1">
+    <!------------------------分割线 ------------------>
+    <mdui-divider style="margin-top: 10px;margin-bottom: 10px;background-color:rgb(208,188,255);" ></mdui-divider>
+    <!------------------------无人机介绍 ------------------>
+    <h1 style="text-align: center;">智能通信</h1>
+    <!------------------------图片1 ------------------>
+    <mdui-layout-item placement="top" class="context_container" style="width:50vw;height:auto;margin-top: 10px;margin-left: auto;margin-right: auto;display: flex; flex-direction:column">
+      <h3>1.数据采集</h3>
+      <h3>目前使用商用无人机搭载采集卡以及通信模块实现数据实时采集和网页显示</h3>
+      <mdui-card variant="outlined" style="width: 50vw;max-height: 40vh;margin-left:auto">
+        <img src="./static/communicationpage/drone1.jpg" style="width: 100%;height:100%;object-fit: cover"/>
+      </mdui-card>
+    </mdui-layout-item>
+    <!------------------------图片2 ------------------>
+    <mdui-layout-item placement="top" class="context_container" style="width:50vw;height:auto;margin-top: 10px;margin-left: auto;margin-right: auto;display: flex; flex-direction:column">
+      <h3>2.机舱</h3>
+      <mdui-card variant="outlined" style="width: 50vw;max-height: 40vh;margin-left:auto">
+        <img src="./static/communicationpage/drone2.jpg" style="width: 100%;height:100%;object-fit: cover"/>
+      </mdui-card>
+    </mdui-layout-item>
+      <!------------------------图片3 ------------------>
+      <mdui-layout-item placement="top" class="context_container" style="width:50vw;height:auto;margin-top: 10px;margin-left: auto;margin-right: auto;display: flex; flex-direction:column">
+        <div style="display: flex;">
+          <h3  style="color:greenyellow">3.干扰源可视化</h3>
+          <mdui-button class="bt"  href="./signalvisualization.html" style="background-color: greenyellow;color: black">
+            前去查看
+            <mdui-icon slot="icon" name=search></mdui-icon>
+            <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+          </mdui-button>
+        </div>
+        <mdui-card variant="outlined" style="width: 50vw;max-height: 40vh;margin-left:auto">
+          <img src="./static/communicationpage/signalvisualization.png" style="width: 100%;height:100%;object-fit: cover"/>
+        </mdui-card>
+      </mdui-layout-item>
+      <!------------------------图片4 ------------------>
+      <mdui-layout-item placement="top" class="context_container" style="width:50vw;height:auto;margin-top: 10px;margin-left: auto;margin-right: auto;display: flex; flex-direction:column">
+        <div style="display: flex;">
+          <h3  style="color:greenyellow">4.测向可视化</h3>
+          <mdui-button class="bt"  href="./signaldoa.html" style="background-color: greenyellow;color: black">
+            前去查看
+            <mdui-icon slot="icon" name=search></mdui-icon>
+            <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+          </mdui-button>
+        </div>
+        <mdui-card variant="outlined" style="width: 50vw;max-height: 40vh;margin-left:auto">
+          <img src="./static/communicationpage/signalDOA.png" style="width: 100%;height:100%;object-fit: cover"/>
+        </mdui-card>
+      </mdui-layout-item>
+      <!------------------------图片5 ------------------>
+      <mdui-layout-item placement="top" class="context_container" style="width:50vw;height:auto;margin-top: 10px;margin-left: auto;margin-right: auto;display: flex; flex-direction:column">
+        <div style="display: flex;">
+          <h3  style="color:greenyellow">5.多频段信号热力图</h3>
+          <mdui-button class="bt"  href="./project1.html" style="background-color: greenyellow;color: black">
+            前去查看
+            <mdui-icon slot="icon" name=search></mdui-icon>
+            <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+          </mdui-button>
+        </div>
+        <mdui-card variant="outlined" style="width: 50vw;max-height: 40vh;margin-left:auto">
+          <img src="./static/communicationpage/project1.png" style="width: 100%;height:100%;object-fit: cover"/>
+        </mdui-card>
+      </mdui-layout-item>
+      <!------------------------图片6 ------------------>
+      <mdui-layout-item placement="top" class="context_container" style="width:50vw;height:auto;margin-top: 10px;margin-left: auto;margin-right: auto;display: flex; flex-direction:column">
+        <div style="display: flex;">
+          <h3  style="color:greenyellow">6.上海市模拟频谱热力图</h3>
+          <mdui-button class="bt"  href="./shanghaiheatmap.html" style="background-color: greenyellow;color: black">
+            前去查看
+            <mdui-icon slot="icon" name=search></mdui-icon>
+            <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+          </mdui-button>
+        </div>
+        <mdui-card variant="outlined" style="width: 50vw;max-height: 40vh;margin-left:auto">
+          <img src="./static/communicationpage/shanghaiheatmap.png" style="width: 100%;height:100%;object-fit: cover"/>
+        </mdui-card>
+      </mdui-layout-item>
+
+      <!------------------------图片7 ------------------>
+      <mdui-layout-item placement="top" class="context_container" style="width:50vw;height:auto;margin-top: 10px;margin-left: auto;margin-right: auto;display: flex; flex-direction:column">
+        <div style="display: flex;">
+          <h3  style="color:greenyellow">7.上海交大2.4G实测频谱热力图</h3>
+          <mdui-button class="bt"  href="./sjtuheatmap.html" style="background-color: greenyellow;color: black">
+            前去查看
+            <mdui-icon slot="icon" name=search></mdui-icon>
+            <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+          </mdui-button>
+        </div>
+        <mdui-card variant="outlined" style="width: 50vw;max-height: 40vh;margin-left:auto">
+          <img src="./static/communicationpage/signalSJTU.png" style="width: 100%;height:100%;object-fit: cover"/>
+        </mdui-card>
+      </mdui-layout-item>
+
+
+
+    </div>
+
+    <!----------------------------页脚内容---------------------------->
+    <mdui-layout-item placement="bottom">
+      <footer style="color: #fff; text-align: center; padding: 10px 0;width:100vw">
+        <h4 style="margin: 0;">上海交通大学图像宽带实验室</h4>
+        <div style="display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap;">
+          <p style="margin: 0;">地址: 上海市/闵行区东川路800号/上海交通大学/电院群楼5号楼402</p>
+          <p style="margin: 0;">电话：+123 456 7890</p>
+          <p style="margin: 0;">邮箱：info@example.com</p>
+        </div>
+      </footer>
+    </mdui-layout-item>
+
+  </mdui-layout-main>
+
+
+</mdui-layout>
+</body>
+</html>

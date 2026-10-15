@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html data-map-page="true" lang="zh-CN">
+<head>
+  <script src="./static/js/site.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Interference Visualize</title>
+  <link rel="stylesheet" href="./static/css/site.css">
+  <link rel="icon" href="./static/mainpage/xlab.webp" type="image/webp">
+</head>
+<script charset="utf-8"
+        src="https://map.qq.com/api/gljs?libraries=tools&v=1.exp&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77"></script>
+<style type="text/css">
+  html,
+  body {
+    height: 100%;
+    overflow: hidden; /* 可以尝试在这里添加overflow: hidden; */
+  }
+
+  #container {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden; /* 直接隐藏滚动条 */
+  }
+
+  p {
+    display: inline-block;
+    max-width: 100%; /* 防止p元素超出容器宽度 */
+    margin: 0; /* 移除外边距 */
+    padding: 0; /* 移除内边距 */
+  }
+  .control-panel {
+    background-color: #304850; /* 灰色背景 */
+    text-align: center; /* 居中对齐所有内容 */
+    padding: 10px; /* 增加内边距 */
+    width: auto; /* 自动宽度，根据内容调整 */
+    margin: auto; /* 水平居中显示 */
+    max-width: 100%; /* 最大宽度限制 */
+  }
+
+  .control-panel h1 {
+    margin: 0 0 10px 0; /* 标题下方的外边距 */
+  }
+
+  .button-row {
+    margin-bottom: 10px; /* 按钮行之间的间距 */
+  }
+
+  .button-row button {
+    margin: 0 5px; /* 按钮之间的间距 */
+    padding: 5px 10px; /* 按钮内边距 */
+    font-size: 10px; /* 文字大小 */
+    cursor: pointer; /* 鼠标指针样式 */
+  }
+
+  .button-style {
+    padding: 10px 20px;
+    font-size: 16px;
+    color: white;
+    border: none;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .single-drone { /* 单个无人机的样式 */
+    background-color: #FFCC41;
+  }
+
+  .combined-drone { /* 组合无人机的样式 */
+    background-color: red;
+  }
+
+
+</style>
+
+
+<div class="control-panel">
+  <h1 style="color: #FFFFFF;">控制面板</h1>
+    <div class="button-row">
+      <p style="font-size:15px;color: #FFFFFF;">地图中双击添加无人机</p>
+      <button type="button" id="itfButton" style="color: #FFFFFF; background-color: #333333;">生成\重置随机干扰源</button>
+      <button type="button" id="switchButton" style="color: #FFFFFF; background-color: #333333;">切换干扰源位置（空中/地面）</button>
+      <button type="button" id="myButton" style="color: #FFFFFF; background-color: #333333;">清空无人机</button>
+      <button type="button" id="delButton" style="color: #FFFFFF; background-color: #333333;">删除上一个无人机</button>
+      <button type="button" id="droneButton" class="button-style single-drone" >单个无人机</button>
+
+    </div>
+
+</div>
+
+
+
+<!--<form id="form1" method="post">-->
+<!--    状态：-->
+<!--    <input type="radio" value=0 name="state" checked="true"/>光标-->
+<!--    <input type="radio" value=1 name="state"/>放置探测器(在地图中对应位置点击右键)-->
+<!--</form>-->
+<body>
+<div id="container"></div>
+<script>
+if (window.TMap) {
+
+  const default_radius = 0.5;
+  const pi = Math.PI;
+  var line_width = 1;
+  var error = pi / 90; //当使用单个无人机是，误差为pi/90；使用组合式无人机时使用pi/720
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  var mapContainer = document.getElementById('container');
+  // 自定义SVG图层 - 继承DOMOverlay
+  function SvgMarker(options) {
+    TMap.DOMOverlay.call(this, options);
+  }
+
+  SvgMarker.prototype = new TMap.DOMOverlay();
+
+  // 初始化
+  SvgMarker.prototype.onInit = function (options) {
+    this.options = options.options;
+    this.map = options.map;
+  };
+
+  // 销毁时需解绑事件监听
+  SvgMarker.prototype.onDestroy = function () {
+    if (this.onClick) {
+      this.dom.removeEventListener(this.onClick);
+    }
+  };
+
+  // 创建DOM元素，返回一个DOMElement，使用this.dom可以获取到这个元素
+  SvgMarker.prototype.createDOM = function () {
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    svg.id = 'svgDom';
+    svg.setAttribute('width', mapContainer.offsetWidth);
+    svg.setAttribute('height', mapContainer.offsetHeight);
+    svg.style.cssText = 'position:absolute;top:0px;left:0px;';
+    var group = []; // 定义g元素数组
+    var polyShape1 = [];
+    var polyShape2 = [];
+    var polyShape3 = [];
+    var polyShape4 = [];
+    var circleShape1 = [];
+    var line = [];
+
+    mapZoom = this.map.getZoom();
+    scaling_factor = Math.pow(2, mapZoom - 12);
+    for (var i = 0; i < this.options.length; i++) {
+      var createCenter = this.map.projectToContainer(this.options[i].position);
+      var endpoint = this.map.projectToContainer(new TMap.LatLng(this.options[i].position.lat, this.options[i].position.lng, 0));//垂线终点
+      group[i] = document.createElementNS(SVG_NS, 'g');
+      pitch = this.map.getPitch();
+      pitch = pitch / 180 * Math.PI;
+      rotation = this.map.getRotation();
+      rotation = rotation / 180 * Math.PI;
+      var radius = default_radius / (scaling_factor);
+      if (this.options[i].type == 1) radius = 0;
+      theta = this.options[i].theta;
+      psi = this.options[i].psi;
+      if (this.options[i].type == 0) {
+        //单个无人机
+        error = pi / 90;
+
+      }
+      else if (this.options[i].type == 2) {
+        //组合无人机
+        error = pi / 540;
+
+      }
+      endLat1 = this.options[i].position.lat + radius * Math.cos(theta + error);
+      endLat2 = this.options[i].position.lat + radius * Math.cos(theta - error);
+      endLng1 = this.options[i].position.lng + (radius / Math.cos(pi * endLat1 / 180)) * Math.sin(theta + error);
+      endLng2 = this.options[i].position.lng + (radius / Math.cos(pi * endLat2 / 180)) * Math.sin(theta - error);
+
+      endHeight1 = this.options[i].position.height + radius * 111000 * Math.tan(psi + error);
+      endHeight2 = this.options[i].position.height + radius * 111000 * Math.tan(psi - error);
+      coordinate1 = new TMap.LatLng(endLat1, endLng1, endHeight1);
+      coordinate2 = new TMap.LatLng(endLat1, endLng1, endHeight2);
+      coordinate3 = new TMap.LatLng(endLat2, endLng2, endHeight1);
+      coordinate4 = new TMap.LatLng(endLat2, endLng2, endHeight2);
+      createEdge1 = this.map.projectToContainer(coordinate1);
+      createEdge2 = this.map.projectToContainer(coordinate2);
+      createEdge3 = this.map.projectToContainer(coordinate3);
+      createEdge4 = this.map.projectToContainer(coordinate4);
+
+      if (createCenter.x >= 0 && createCenter.y >= 0) {
+        line_width = 1;
+        while (createEdge1.x < 0 || createEdge1.y < 0 || createEdge2.x < 0 || createEdge2.y < 0 || createEdge3.x < 0 || createEdge3.y < 0 || createEdge4.x < 0 || createEdge4.y < 0) {
+          radius = radius * 3 / 4;
+          endLat1 = this.options[i].position.lat + radius * Math.cos(theta + error);
+          endLat2 = this.options[i].position.lat + radius * Math.cos(theta - error);
+          endLng1 = this.options[i].position.lng + (radius / Math.cos(pi * endLat1 / 180)) * Math.sin(theta + error);
+          endLng2 = this.options[i].position.lng + (radius / Math.cos(pi * endLat2 / 180)) * Math.sin(theta - error);
+          endHeight1 = this.options[i].position.height + radius * 111000 * Math.tan(psi + error);
+          endHeight2 = this.options[i].position.height + radius * 111000 * Math.tan(psi - error);
+
+          coordinate1 = new TMap.LatLng(endLat1, endLng1, endHeight1);
+          coordinate2 = new TMap.LatLng(endLat1, endLng1, endHeight2);
+          coordinate3 = new TMap.LatLng(endLat2, endLng2, endHeight1);
+          coordinate4 = new TMap.LatLng(endLat2, endLng2, endHeight2);
+          createEdge1 = this.map.projectToContainer(coordinate1);
+          createEdge2 = this.map.projectToContainer(coordinate2);
+          createEdge3 = this.map.projectToContainer(coordinate3);
+          createEdge4 = this.map.projectToContainer(coordinate4);
+        }
+      }
+      else {
+        createEdge1 = createEdge2 = createEdge3 = createEdge4 = createCenter;
+        line_width = 0;
+      }
+
+      var pointParameter1 =
+              String(createCenter.x) + "," + String(createCenter.y) + ' ' +
+              String(createEdge1.x) + "," + String(createEdge1.y) + ' ' +
+              String(createEdge2.x) + "," + String(createEdge2.y);
+
+      var pointParameter2 =
+              String(createCenter.x) + "," + String(createCenter.y) + ' ' +
+              String(createEdge2.x) + "," + String(createEdge2.y) + ' ' +
+              String(createEdge4.x) + "," + String(createEdge4.y);
+
+      var pointParameter3 =
+              String(createCenter.x) + "," + String(createCenter.y) + ' ' +
+              String(createEdge4.x) + "," + String(createEdge4.y) + ' ' +
+              String(createEdge3.x) + "," + String(createEdge3.y);
+
+      var pointParameter4 =
+              String(createCenter.x) + "," + String(createCenter.y) + ' ' +
+              String(createEdge3.x) + "," + String(createEdge3.y) + ' ' +
+              String(createEdge1.x) + "," + String(createEdge1.y);
+
+
+
+
+      polyShape1[i] = document.createElementNS(SVG_NS, 'polygon');
+      polyShape2[i] = document.createElementNS(SVG_NS, 'polygon');
+      polyShape3[i] = document.createElementNS(SVG_NS, 'polygon');
+      polyShape4[i] = document.createElementNS(SVG_NS, 'polygon');
+      //范围线的颜色，单个无人机是yellow，组合式无人机是red
+      if (this.options[i].type == 0) {
+        //单个无人机
+        polyShape1[i].setAttribute('style', 'fill: yellow;stroke:#FFFF00;opacity:0.3;');
+        polyShape2[i].setAttribute('style', 'fill: yellow;stroke:#FFFF00;opacity:0.3;');
+        polyShape3[i].setAttribute('style', 'fill: yellow;stroke:#FFFF00;opacity:0.3;');
+        polyShape4[i].setAttribute('style', 'fill: yellow;stroke:#FFFF00;opacity:0.3;');
+
+      }
+      else if (this.options[i].type == 2) {
+        //组合无人机
+        polyShape1[i].setAttribute('style', 'fill: yellow;stroke:#FFFF00;opacity:0.3;');
+        polyShape2[i].setAttribute('style', 'fill: yellow;stroke:#FFFF00;opacity:0.5;');
+        polyShape3[i].setAttribute('style', 'fill: yellow;stroke:#FFFF00;opacity:0.3;');
+        polyShape4[i].setAttribute('style', 'fill: yellow;stroke:#FFFF00;opacity:0.3;');
+
+      }
+
+      polyShape1[i].setAttribute('points', pointParameter1);
+      polyShape2[i].setAttribute('points', pointParameter2);
+      polyShape3[i].setAttribute('points', pointParameter3);
+      polyShape4[i].setAttribute('points', pointParameter4);
+      group[i].appendChild(polyShape1[i]);
+      group[i].appendChild(polyShape2[i]);
+      group[i].appendChild(polyShape3[i]);
+      group[i].appendChild(polyShape4[i]);
+      /*原来是圆点，替换为无人机图片
+      circleShape1[i]=document.createElementNS(SVG_NS,'circle');
+      if(this.options[i].type==1)
+      {
+          circleShape1[i].setAttribute('style', 'fill: Red;stroke:#FFFFFF;opacity:0.6;');
+          line_width=5;
+      }
+      else circleShape1[i].setAttribute('style', 'fill: Blue;stroke:#FFFFFF;opacity:0.9;');
+
+      circleShape1[i].setAttribute('cx', createCenter.x);
+      circleShape1[i].setAttribute('cy', createCenter.y);
+      circleShape1[i].setAttribute('r', 2*line_width);
+      group[i].appendChild(circleShape1[i]);
+      */
+      //设置点的样式
+      circleShape1[i] = document.createElementNS(SVG_NS, 'image');
+      if (this.options[i].type == 0) {
+        circleShape1[i].setAttributeNS(null, 'href', './static/communicationpage/Single_drone.png'); // 设置无人机图片源
+        circleShape1[i].setAttribute('width', 40); // 图片宽度设置为20
+        circleShape1[i].setAttribute('height', 40); // 图片高度设置为30
+      }
+      else if (this.options[i].type == 1) {
+        circleShape1[i].setAttributeNS(null, 'href', './static/communicationpage/signal.png'); // 设置信号图片源
+        circleShape1[i].setAttribute('width', 40); // 图片宽度设置为20
+        circleShape1[i].setAttribute('height', 40); // 图片高度设置为30
+      }
+      else if (this.options[i].type == 2) {
+        circleShape1[i].setAttributeNS(null, 'href', './static/communicationpage/Combined_drone.png'); // 设置组合无人机图片源
+        circleShape1[i].setAttribute('width', 80); // 图片宽度设置为20
+        circleShape1[i].setAttribute('height',80); // 图片高度设置为30
+      }
+      var imageWidth = circleShape1[i].getBBox().width;
+      var imageHeight = circleShape1[i].getBBox().height;
+      circleShape1[i].setAttribute('x', createCenter.x - (imageWidth/2)); // 调整图片的x坐标，使其居中
+      circleShape1[i].setAttribute('y', createCenter.y - (imageHeight/2)); // 调整图片的y坐标，使其居中
+
+      group[i].appendChild(circleShape1[i]);
+
+      //添加虚线，显示高度
+      line[i] = document.createElementNS(SVG_NS, 'line');
+
+      // 设置线的起点和终点坐标
+
+      line[i].setAttribute('x1', createCenter.x);  // 起点x坐标
+      line[i].setAttribute('y1', createCenter.y);  // 起点y坐标
+      line[i].setAttribute('x2', endpoint.x); // 终点x坐标
+      line[i].setAttribute('y2', endpoint.y);  // 终点y坐标
+
+      // 设置线的样式
+      line[i].setAttribute('stroke', 'yellow');       // 线的颜色
+      line[i].setAttribute('stroke-width', '2');     // 线的宽度
+      line[i].setAttribute('stroke-dasharray', '5,5'); // 虚线的样式，数字代表画线和空白的长度
+      group[i].appendChild(line[i]);
+
+      svg.appendChild(group[i]);
+      this.onMouseEnter = function (e) {
+        // this.emit('mouseenter', e.target.firstChild);
+      }.bind(this);
+      this.onMouseLeave = function (e) {
+        // this.emit('mouseleave', e.target.firstChild);
+      }.bind(this);
+      // group[i].addEventListener('mouseenter', this.onMouseEnter);
+      // group[i].addEventListener('mouseleave', this.onMouseLeave);
+    }
+    return svg;
+  };
+  // 更新DOM元素，在地图移动/缩放后执行
+  SvgMarker.prototype.updateDOM = function () {
+    if (!this.map) {
+      return;
+    }
+    mapZoom = this.map.getZoom();
+    pitch = this.map.getPitch();
+    pitch = pitch / 180 * Math.PI;
+    scaling_factor = Math.pow(2, mapZoom - 12);
+
+
+    // 经纬度坐标转容器像素坐标
+    for (var j = 0; j < this.options.length; j++) {
+      var updateCenter = this.map.projectToContainer(this.options[j].position);
+      var updateendpoint = this.map.projectToContainer(new TMap.LatLng(this.options[j].position.lat, this.options[j].position.lng, 0));//垂线终点
+      theta = this.options[j].theta;
+      psi = this.options[j].psi;
+      var radius = default_radius / (scaling_factor);
+      if (this.options[j].type == 1) radius = 0;
+      if (this.options[j].type == 0) {
+        //单个无人机
+        error = pi / 90;
+      }
+      else if (this.options[j].type == 2) {
+        //组合无人机
+        error = pi / 540;
+      }
+      endLat1 = this.options[j].position.lat + radius * Math.cos(theta + error);
+      endLat2 = this.options[j].position.lat + radius * Math.cos(theta - error);
+      endLng1 = this.options[j].position.lng + (radius / Math.cos(pi * endLat1 / 180)) * Math.sin(theta + error);
+      endLng2 = this.options[j].position.lng + (radius / Math.cos(pi * endLat2 / 180)) * Math.sin(theta - error);
+      endHeight1 = this.options[j].position.height + radius * 111000 * Math.tan(psi + error);
+      endHeight2 = this.options[j].position.height + radius * 111000 * Math.tan(psi - error);
+      coordinate1 = new TMap.LatLng(endLat1, endLng1, endHeight1);
+      coordinate2 = new TMap.LatLng(endLat1, endLng1, endHeight2);
+      coordinate3 = new TMap.LatLng(endLat2, endLng2, endHeight1);
+      coordinate4 = new TMap.LatLng(endLat2, endLng2, endHeight2);
+      updateEdge1 = this.map.projectToContainer(coordinate1);
+      updateEdge2 = this.map.projectToContainer(coordinate2);
+      updateEdge3 = this.map.projectToContainer(coordinate3);
+      updateEdge4 = this.map.projectToContainer(coordinate4);
+
+      if (updateCenter.x >= 0 && updateCenter.y >= 0) {
+        line_width = 1;
+        while (updateEdge1.x < 0 || updateEdge1.y < 0 || updateEdge2.x < 0 || updateEdge2.y < 0 || updateEdge3.x < 0 || updateEdge3.y < 0 || updateEdge4.x < 0 || updateEdge4.y < 0) {
+          radius = radius * 3 / 4;
+          endLat1 = this.options[j].position.lat + radius * Math.cos(theta + error);
+          endLat2 = this.options[j].position.lat + radius * Math.cos(theta - error);
+          endLng1 = this.options[j].position.lng + (radius / Math.cos(pi * endLat1 / 180)) * Math.sin(theta + error);
+          endLng2 = this.options[j].position.lng + (radius / Math.cos(pi * endLat2 / 180)) * Math.sin(theta - error);
+          endHeight1 = this.options[j].position.height + radius * 111000 * Math.tan(psi + error);
+          endHeight2 = this.options[j].position.height + radius * 111000 * Math.tan(psi - error);
+          coordinate1 = new TMap.LatLng(endLat1, endLng1, endHeight1);
+          coordinate2 = new TMap.LatLng(endLat1, endLng1, endHeight2);
+          coordinate3 = new TMap.LatLng(endLat2, endLng2, endHeight1);
+          coordinate4 = new TMap.LatLng(endLat2, endLng2, endHeight2);
+          updateEdge1 = this.map.projectToContainer(coordinate1);
+          updateEdge2 = this.map.projectToContainer(coordinate2);
+          updateEdge3 = this.map.projectToContainer(coordinate3);
+          updateEdge4 = this.map.projectToContainer(coordinate4);
+        }
+      }
+      else {
+        updateEdge1 = updateEdge2 = updateEdge3 = updateEdge4 = updateCenter;
+        line_width = 0;
+      }
+
+      var pointParameter1 =
+              String(updateCenter.x) + "," + String(updateCenter.y) + ' ' +
+              String(updateEdge1.x) + "," + String(updateEdge1.y) + ' ' +
+              String(updateEdge2.x) + "," + String(updateEdge2.y);
+
+      var pointParameter2 =
+              String(updateCenter.x) + "," + String(updateCenter.y) + ' ' +
+              String(updateEdge2.x) + "," + String(updateEdge2.y) + ' ' +
+              String(updateEdge4.x) + "," + String(updateEdge4.y);
+
+      var pointParameter3 =
+              String(updateCenter.x) + "," + String(updateCenter.y) + ' ' +
+              String(updateEdge4.x) + "," + String(updateEdge4.y) + ' ' +
+              String(updateEdge3.x) + "," + String(updateEdge3.y);
+
+      var pointParameter4 =
+              String(updateCenter.x) + "," + String(updateCenter.y) + ' ' +
+              String(updateEdge3.x) + "," + String(updateEdge3.y) + ' ' +
+              String(updateEdge1.x) + "," + String(updateEdge1.y);
+
+      if (this.options[j].type == 1) line_width = 5;
+
+      this.dom.children[j]
+              .getElementsByTagName('polygon')[0]
+              .setAttribute('points', pointParameter1);
+
+
+      this.dom.children[j]
+              .getElementsByTagName('polygon')[1]
+              .setAttribute('points', pointParameter2);
+
+      this.dom.children[j]
+              .getElementsByTagName('polygon')[2]
+              .setAttribute('points', pointParameter3);
+
+      this.dom.children[j]
+              .getElementsByTagName('polygon')[3]
+              .setAttribute('points', pointParameter4);
+
+
+
+
+      var imageWidth = this.dom.children[j].getElementsByTagName('image')[0].getBBox().width;
+      var imageHeight = this.dom.children[j].getElementsByTagName('image')[0].getBBox().height;
+
+      this.dom.children[j]
+              .getElementsByTagName('image')[0]
+              .setAttribute('x', updateCenter.x - (imageWidth/2));
+      this.dom.children[j]
+              .getElementsByTagName('image')[0]
+              .setAttribute('y', updateCenter.y - (imageHeight/2));
+
+      this.dom.children[j]
+              .getElementsByTagName('line')[0]
+              .setAttribute('x1', updateCenter.x);
+      this.dom.children[j]
+              .getElementsByTagName('line')[0]
+              .setAttribute('y1', updateCenter.y);
+      this.dom.children[j]
+              .getElementsByTagName('line')[0]
+              .setAttribute('x2', updateendpoint.x);
+      this.dom.children[j]
+              .getElementsByTagName('line')[0]
+              .setAttribute('y2', updateendpoint.y);
+    }
+  };
+
+  SvgMarker.remove = function () {
+    while (this.hasChildNodes()) {
+      this.removeChild(this.lastChild);
+    }
+  }
+  window.SvgMarker = SvgMarker;
+
+}
+</script>
+
+<script type="text/javascript">
+  function initMap() {
+    // 初始化地图
+    var map = new TMap.Map('container', {
+      zoom: 12, // 设置地图缩放级别
+      center: new TMap.LatLng(31.02904283, 121.42900285), // 设置地图中心点坐标
+      mapStyleId: "style1",//个性化样式
+      baseMap: {
+        type: "vector",
+        features: ["base", "building3d", "point"], // 隐藏矢量文字
+      },
+      doubleClickZoom: false
+    });
+    // 初始化自定义marker类
+    option_list = [];
+    data_list = [];
+    var flag = 0;
+    var h = 2000;
+    var r_x = 31.02904283;
+    var r_y = 121.42900285;
+    var drone_type = 0;//0为单个无人机，2为组合无人机
+    var source_item = {};
+    {
+      rd_x = r_x
+      rd_y = r_y
+      rd_height = h;
+
+      rd_theta = 0;
+      rd_psi = 0;
+
+      source_item = {
+        position: new TMap.LatLng(rd_x, rd_y, rd_height),
+        theta: rd_theta,
+        psi: rd_psi,
+        type: 1
+      };
+      option_list.push(source_item)
+    }
+
+    var marker = new SvgMarker({
+      map,
+      options: data_list
+    });
+    var source = new SvgMarker({
+      map,
+      options: option_list
+    });
+
+    // 监听地图容器变化，动态修改svg图层大小，防止更新时元素移出svg图区
+    map.on('resize', function () {
+      document.getElementById('svgDom').setAttribute('width', mapContainer.offsetWidth);
+      document.getElementById('svgDom').setAttribute('height', mapContainer.offsetHeight);
+    })
+
+    map.on('dblclick', function (e) {
+      //tmpPos = e.latLng;
+      tmpPos = new TMap.LatLng(e.latLng.lat, e.latLng.lng, 3000 + 1000 * Math.random());
+      var x = 111000 * ((source_item.position.lng - tmpPos.lng) * Math.cos(tmpPos.lat / 180 * pi));
+      var y = 111000 * (source_item.position.lat - tmpPos.lat);
+
+      r = Math.sqrt(x ** 2 + y ** 2);
+      tmpTheta = 0;
+      tmpPsi = 0;
+      if (y == 0) tmpTheta = 0;
+      else {
+        tmpTheta = Math.atan(x / y);
+        if (y < 0) tmpTheta = tmpTheta + pi;
+        else if (x <= 0 && y > 0) tmpTheta = tmpTheta + 2 * pi;
+      }
+      tmpPsi = Math.atan((source_item.position.height - tmpPos.height) / r);
+
+      tmpItem = {
+        position: tmpPos,
+        theta: tmpTheta,
+        psi: tmpPsi,
+        type: drone_type
+      };
+
+      data_list.push(tmpItem)
+      marker.destroy();
+      marker = new SvgMarker({
+        map,
+        options: data_list
+      });
+
+    })
+    var myButton = document.getElementById("myButton");
+    var delButton = document.getElementById("delButton");
+    var srcButton = document.getElementById("itfButton");
+    var swButton = document.getElementById("switchButton");
+    var droneButton = document.getElementById("droneButton");
+
+    swButton.onclick = function () {
+      if (h == 2000) {
+        h = 10;
+      }
+      else h = 2000;
+
+      option_list = []
+      source.destroy();
+      source_item = {};
+
+      {
+        rd_x = r_x;
+        rd_y = r_y;
+        rd_height = h;
+
+        rd_theta = 0;
+        rd_psi = 0;
+
+        source_item = {
+          position: new TMap.LatLng(rd_x, rd_y, rd_height),
+          theta: rd_theta,
+          psi: rd_psi,
+          type: 1
+        };
+        option_list.push(source_item)
+      }
+
+      source = new SvgMarker({
+        map,
+        options: option_list
+      });
+
+      for (var i = 0; i < data_list.length; i++) {
+        tmpPos = data_list[i].position;
+        var x = 111000 * ((source_item.position.lng - tmpPos.lng) * Math.cos(tmpPos.lat / 180 * pi));
+        var y = 111000 * (source_item.position.lat - tmpPos.lat);
+
+        r = Math.sqrt(x ** 2 + y ** 2);
+        tmpTheta = 0;
+        tmpPsi = 0;
+        if (y == 0) tmpTheta = 0;
+        else {
+          tmpTheta = Math.atan(x / y);
+          if (y < 0) tmpTheta = tmpTheta + pi;
+          else if (x <= 0 && y > 0) tmpTheta = tmpTheta + 2 * pi;
+        }
+        tmpPsi = Math.atan((source_item.position.height - tmpPos.height) / r);
+
+        data_list[i] = {
+          position: tmpPos,
+          theta: tmpTheta,
+          psi: tmpPsi,
+          type: data_list[i].type
+        };
+      }
+
+      marker.destroy();
+      marker = new SvgMarker({
+        map,
+        options: data_list
+      });
+
+
+
+    }
+
+    srcButton.onclick = function () {
+      option_list = []
+      source.destroy();
+      source_item = {};
+      r_x = 31.02904283 + (Math.random() - 0.5) / 20;
+      r_y = 121.42900285 + (Math.random() - 0.5) / 20;
+      {
+        rd_x = r_x
+        rd_y = r_y
+        rd_height = h;
+
+        rd_theta = 0;
+        rd_psi = 0;
+
+        source_item = {
+          position: new TMap.LatLng(rd_x, rd_y, rd_height),
+          theta: rd_theta,
+          psi: rd_psi,
+          type: 1
+        };
+        option_list.push(source_item)
+      }
+
+      source = new SvgMarker({
+        map,
+        options: option_list
+      });
+
+      for (var i = 0; i < data_list.length; i++) {
+        tmpPos = data_list[i].position;
+        var x = 111000 * ((source_item.position.lng - tmpPos.lng) * Math.cos(tmpPos.lat / 180 * pi));
+        var y = 111000 * (source_item.position.lat - tmpPos.lat);
+
+        r = Math.sqrt(x ** 2 + y ** 2);
+        tmpTheta = 0;
+        tmpPsi = 0;
+        if (y == 0) tmpTheta = 0;
+        else {
+          tmpTheta = Math.atan(x / y);
+          if (y < 0) tmpTheta = tmpTheta + pi;
+          else if (x <= 0 && y > 0) tmpTheta = tmpTheta + 2 * pi;
+        }
+        tmpPsi = Math.atan((source_item.position.height - tmpPos.height) / r);
+
+        data_list[i] = {
+          position: tmpPos,
+          theta: tmpTheta,
+          psi: tmpPsi,
+          type: data_list[i].type
+        };
+      }
+
+      marker.destroy();
+      marker = new SvgMarker({
+        map,
+        options: data_list
+      });
+
+    }
+
+    myButton.onclick = function () {
+      data_list = [];
+      marker.destroy();
+      marker = new SvgMarker({
+        map,
+        options: data_list
+      });
+    }
+    delButton.onclick = function () {
+      data_list.pop();
+      marker.destroy();
+      marker = new SvgMarker({
+        map,
+        options: data_list
+      });
+    }
+
+    droneButton.onclick = function () {
+
+      var button = document.getElementById('droneButton');
+      if (button.classList.contains('single-drone')) {
+        button.classList.remove('single-drone');
+        button.classList.add('combined-drone');
+        button.textContent = '组合无人机';
+        drone_type = 2;
+      } else {
+        button.classList.remove('combined-drone');
+        button.classList.add('single-drone');
+        button.textContent = '单个无人机';
+        drone_type = 0;
+      }
+
+
+    }
+
+
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.TMap) return;
+    try { initMap(); } catch (error) { XLab.reportError(error); }
+  });
+</script>
+
+<a class="site-home-link" href="./communication.html">返回智能通信</a>
+</body>
+</html>

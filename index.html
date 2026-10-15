@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN"  class="mdui-theme-dark">
+<head>
+  <script src="./static/js/site.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no"/>
+  <meta name="renderer" content="webkit"/>
+
+
+  <link rel="stylesheet" href="./static/mdui/mdui@2_mdui.css">
+  <script src="./static/mdui/mdui@2_mdui.global.js"></script>
+
+
+  <!--icon库-->
+  <link href="./static/mdui/Material_Icons_Outlined.css" rel="stylesheet">
+  <link href="./static/mdui/Material_Icons.css" rel="stylesheet">
+
+
+
+  <title>XLab!</title>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden; /* 禁止页面滚动 */
+    }
+    .top-app-bar{
+      box-sizing: content-box;
+    }
+    .container-layout-main{
+      height:100vh; /* 60px 是顶部导航栏的高度，调整为实际高度 */
+      overflow-y: auto; /* 允许内容滚动 */
+
+    }
+
+  .bt{
+    margin-right: 5px;
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+
+  </style>
+
+  <link rel="stylesheet" href="./static/css/site.css">
+  <link rel="icon" href="./static/mainpage/xlab.webp" type="image/webp">
+</head>
+<body>
+
+
+
+<!------------------------- 主框架 ----------------------------------------------->
+<mdui-layout style="position: relative;overflow: hidden;">
+  <!------------------------顶部应用栏 ------------------>
+  <mdui-top-app-bar class="top-app-bar" scroll-behavior="elevate" scroll-target=".container-layout-main">
+
+    <a href="./index.html" style="display: contents;">
+      <mdui-avatar style="overflow: visible;margin: auto;" src="./static/mainpage/xlab.webp" ></mdui-avatar>
+    </a>
+
+    <mdui-top-app-bar-title style="font-size: xx-large;margin: auto;margin-left: 5px;">
+      XLAB: A rising star from SJTU
+    </mdui-top-app-bar-title>
+
+    <mdui-button class="bt" href="./drone.html">
+      无人机
+      <mdui-icon slot="icon" name=airplanemode_active--outlined></mdui-icon>
+      <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+    </mdui-button>
+
+    <mdui-button class="bt" href="./communication.html">
+      智能通信
+      <mdui-icon slot="icon" name=signal_cellular_alt--outlined></mdui-icon>
+      <mdui-icon slot="end-icon" name="arrow_forward"></mdui-icon>
+    </mdui-button>
+  </mdui-top-app-bar>
+
+
+  <!------------------------主页内容 ------------------>
+  <mdui-layout-main class="container-layout-main" id="container" style="display: flex; flex-direction: column;">
+
+    <div style="flex: 1">
+    <!------------------------分割线 ------------------>
+    <mdui-divider style="margin-top: 10px;margin-bottom: 10px;background-color:rgb(208,188,255);" ></mdui-divider>
+    <!------------------------介绍分类 ------------------>
+    <!------------------------分类1 ------------------>
+    <mdui-layout-item placement="top" class="context_container" style="margin-top: 10px">
+      <mdui-card variant="outlined" style="width: 40vw;height: 30vh;margin-left:auto;margin-right: 5px">
+        <img src="./static/mainpage/drone.png" style="width: 100%;height:100%;object-fit: cover"/>
+      </mdui-card>
+
+      <mdui-card variant="filled" href="./drone.html"
+                 style="width: 40vw;height: 30vh;margin-right: auto;margin-left: 10px;padding-left: 10px;padding-right: 10px">
+        <h1 style="text-align: center">可组合可分离式无人机</h1>
+        <h3>可组合可分离式无人系统，是两种或多种无人系统，通过高精度的定位技术来完成自主组合、分拆，并可实现组合自定义形式的任务的无人系统。通过多种组合形式，可以实现资源的调配、协作、优化等功能；从而实现任务的空间与时间接力，推动无人系统在空间与时间维度上的任务执行能力。可实现平台的尺寸小型化、功能模块化、生物性标志性化、资源可再生化。</h3>
+        <h4 style="width:fit-content;padding:2px;background-color:rgb(208,188,255);color:rgb(55,30,115);margin: auto">Learn more</h4>
+      </mdui-card>
+    </mdui-layout-item>
+    <!------------------------分类2 ------------------>
+    <mdui-layout-item placement="top" class="context_container" style="margin-top: 10px">
+      <mdui-card variant="outlined" style="width: 40vw;height: 30vh;margin-left:auto;margin-right: 5px">
+        <img src="./static/mainpage/signal11.jpg" style="width: 100%;height:100%;object-fit: cover"/>
+      </mdui-card>
+
+      <mdui-card variant="filled" href="./communication.html"
+                 style="width: 40vw;height: 30vh;margin-right: auto;margin-left: 10px;padding-left: 10px;padding-right: 10px">
+        <h1 style="text-align: center">智能通信</h1>
+        <h3>智能通信系统，包括通信系统、干扰源识别分析系统等，面向动态环境中的社会需求，通过在通信中节点处布设基站并搭建移动系统，深度挖掘通信的大数据，分析通信资源使用情况，调度系统，优化干扰问题，异构通信网络，且在网页中展示，便于浏览。</h3>
+        <h4 style="width:fit-content;padding:2px;background-color:rgb(208,188,255);color:rgb(55,30,115);margin: auto">Learn more</h4>
+      </mdui-card>
+    </mdui-layout-item>
+
+
+    </div>
+
+    <!----------------------------页脚内容---------------------------->
+    <mdui-layout-item placement="bottom">
+      <footer style="color: #fff; text-align: center; padding: 10px 0;width:100vw">
+        <h4 style="margin: 0;">上海交通大学宽带通信实验室</h4>
+        <div style="display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap;">
+          <p style="margin: 0;">地址: 上海市/闵行区东川路800号/上海交通大学/电院群楼5号楼402</p>
+          <p style="margin: 0;">电话：+123 456 7890</p>
+          <p style="margin: 0;">邮箱：info@example.com</p>
+        </div>
+      </footer>
+    </mdui-layout-item>
+
+  </mdui-layout-main>
+
+</mdui-layout>
+</body>
+</html>
